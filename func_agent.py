@@ -2,6 +2,7 @@ import json
 import re
 import sqlite3
 from functools import partial
+from typing import List
 
 import openai
 from langchain import SQLDatabase
@@ -365,7 +366,7 @@ class FuncAgent:
                     stop=tenacity.stop_after_attempt(8),
                     before_sleep=tenacity_retry_log,
                     retry=tenacity.retry_if_exception_type(openai.OpenAIError))
-    def chat(self, messages, callbacks: list[LLMResult] =[]):
+    def chat(self, messages, callbacks: List[LLMResult] =[]):
         completion = openai.ChatCompletion.create(
             model=self.model,
             temperature=0,

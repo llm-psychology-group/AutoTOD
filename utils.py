@@ -1,4 +1,5 @@
 from io import StringIO
+from pathlib import Path
 import json
 import os
 import random
@@ -6,6 +7,14 @@ import re
 from pprint import pprint
 
 from termcolor import colored
+from dotenv import load_dotenv
+
+# Build the path to the .env file
+BASE_DIR = Path(__file__).parent
+env_path = BASE_DIR / ".env"
+# Load the environment variables from the .env file
+print(f"Loading environment variables from {env_path}")
+load_dotenv(env_path, override=True)
 
 
 DOMAINS = ['hotel', 'restaurant', 'attraction', 'train', 'taxi']
@@ -17,7 +26,7 @@ DB_PATH = 'data/mwoz/db/multiwoz.db'
 BOOK_DB_PATH = 'data/mwoz/db/multiwoz_book.db'
 
 OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
-print(f'{OPENAI_API_KEY = }')
+# print(f'{OPENAI_API_KEY = }')
 
 HEADER_WIDTH = 50
 HEADER_COLOR = '\u001b[1;31m'
