@@ -14,12 +14,19 @@ import tenacity
 from booking import book_hotel, book_restaurant, book_taxi, book_train
 from client import MyOpenAI
 from prompts import AGENT_TEMPLATE, DB_TEMPLATE_DICT
-from utils import (AGENT_COLOR, DB_PATH, HEADER_COLOR, HEADER_WIDTH,
-                   OPENAI_API_KEY, RESET_COLOR, USER_COLOR, tenacity_retry_log)
+from utils import (
+    AGENT_COLOR,
+    DB_PATH,
+    HEADER_COLOR,
+    HEADER_WIDTH,
+    OPENAI_API_KEY,
+    RESET_COLOR,
+    USER_COLOR,
+    tenacity_retry_log,
+)
 
 
 class SQLDatabaseChainWithCleanSQL(SQLDatabaseChain):
-
     def _call(
         self,
         inputs: Dict[str, Any],
@@ -64,21 +71,27 @@ class SQLDatabaseChainWithCleanSQL(SQLDatabaseChain):
         if self.return_intermediate_steps:
             chain_result["intermediate_steps"] = intermediate_steps
         return chain_result
-    
+
     def clean_sql(self, sql_cmd):
+        sql_cmd = sql_cmd.replace("SQLQuery:", "")
+        pattern = r"```(.*)\n(.*)\n```"
+        x = re.search(pattern, sql_cmd)
+        if x:
+            sql_cmd = x.group(2)
         sql_cmd = sql_cmd.strip()
         if sql_cmd[0] == '"' and sql_cmd[-1] == '"':
             sql_cmd = sql_cmd[1:-1]
         if sql_cmd[0] == "'" and sql_cmd[-1] == "'":
             sql_cmd = sql_cmd[1:-1]
+        # Remove escape characters
+        sql_cmd = sql_cmd.replace('\\"', '"').replace("\\'", "'")
 
         sql_cmd = re.sub(r"name (=|LIKE) '(.*'.*)'", r'name \1 "\2"', sql_cmd)
         return sql_cmd
 
 
 class Agent:
-
-    def __init__(self, model='gpt-3.5-turbo-0301'):
+    def __init__(self, model="gpt-3.5-turbo-0301"):
         self.model = model
         self.agent_executor = None
         self.reset()
@@ -88,7 +101,7 @@ class Agent:
 
     @staticmethod
     def prepare_db_tools(llm):
-        DB_URI = f'sqlite:///{DB_PATH}'
+        DB_URI = f"sqlite:///{DB_PATH}"
 
         def prepare_db_one_tool(domain, name):
             db = SQLDatabase.from_uri(
@@ -98,16 +111,17 @@ class Agent:
             )
             db_prompt = PromptTemplate.from_template(DB_TEMPLATE_DICT[domain])
             sql_chain = SQLDatabaseChainWithCleanSQL.from_llm(
-                db=db, llm=llm, prompt=db_prompt, top_k=10, verbose=True)
-            tool = Tool(func=sql_chain.run, name=name, description='')
+                db=db, llm=llm, prompt=db_prompt, top_k=10, verbose=True
+            )
+            tool = Tool(func=sql_chain.run, name=name, description="")
             return tool
-        
+
         # domain (table, prompt), name
         db_info = [
-            ('restaurant', 'Restaurant Query'),
-            ('hotel', 'Hotel Query'),
-            ('attraction', 'Attraction Query'),
-            ('train', 'Train Query'),
+            ("restaurant", "Restaurant Query"),
+            ("hotel", "Hotel Query"),
+            ("attraction", "Attraction Query"),
+            ("train", "Train Query"),
         ]
         tools = []
         for domain, name in db_info:
@@ -121,18 +135,22 @@ class Agent:
     @staticmethod
     def prepare_book_tools():
         tools = [
-            Tool(func=book_restaurant, name='Restaurant Reservation', description=''),
-            Tool(func=book_hotel, name='Hotel Reservation', description=''),
-            Tool(func=book_train, name='Train Tickets Purchase', description=''),
-            Tool(func=book_taxi, name='Taxi Reservation', description=''),
+            Tool(func=book_restaurant, name="Restaurant Reservation", description=""),
+            Tool(func=book_hotel, name="Hotel Reservation", description=""),
+            Tool(func=book_train, name="Train Tickets Purchase", description=""),
+            Tool(func=book_taxi, name="Taxi Reservation", description=""),
         ]
         return tools
 
     @staticmethod
     def prepare_agent_executor(model):
         # LLM
-        assert model.startswith('text-davinci-') or model.startswith('gpt-3.5-')
-        if model.startswith('text-davinci-'):
+        assert (
+            model.startswith("text-davinci-")
+            or model.startswith("gpt-3.5-")
+            or model.startswith("gpt-4")
+        )
+        if model.startswith("text-davinci-"):
             llm = OpenAI(
                 model_name=model,
                 temperature=0,
@@ -153,8 +171,8 @@ class Agent:
         tools += Agent.prepare_book_tools()
 
         # Agent
-        HUMAN_PREFIX = 'Human'
-        AI_PREFIX = 'AI Assistant'
+        HUMAN_PREFIX = "Human"
+        AI_PREFIX = "AI Assistant"
 
         prompt_temp = PromptTemplate.from_template(AGENT_TEMPLATE)
         llm_chain = LLMChain(
@@ -164,13 +182,13 @@ class Agent:
         agent = ConversationalAgent(
             llm_chain=llm_chain,
             ai_prefix=AI_PREFIX,
-            output_parser=ConvoOutputParser(ai_prefix=AI_PREFIX)
+            output_parser=ConvoOutputParser(ai_prefix=AI_PREFIX),
         )
 
         memory = ConversationBufferMemory(
             human_prefix=HUMAN_PREFIX,
             ai_prefix=AI_PREFIX,
-            memory_key='chat_history',
+            memory_key="chat_history",
         )
         agent_executor = AgentExecutor.from_agent_and_tools(
             agent=agent,
@@ -185,29 +203,38 @@ class Agent:
         agent_utter = self.agent_executor.run(user_utter, callbacks=callbacks)
         agent_utter.strip()
         return agent_utter
-    
+
     def run(self):
         self.reset()
 
         turn_idx = 1
         while True:
-            print(HEADER_COLOR + '=' * HEADER_WIDTH + f' Turn {turn_idx} ' + '=' * HEADER_WIDTH + RESET_COLOR, end='\n\n')
+            print(
+                HEADER_COLOR
+                + "=" * HEADER_WIDTH
+                + f" Turn {turn_idx} "
+                + "=" * HEADER_WIDTH
+                + RESET_COLOR,
+                end="\n\n",
+            )
 
             # User
-            print(USER_COLOR + f'User: ', end='')
-            user_input = input('User: ').strip()
-            if user_input in ['exit', 'e']:
+            print(USER_COLOR + f"User: ", end="")
+            user_input = input("User: ").strip()
+            if user_input in ["exit", "e"]:
                 break
-            print(USER_COLOR + f'{user_input}' + RESET_COLOR, end='\n')
+            print(USER_COLOR + f"{user_input}" + RESET_COLOR, end="\n")
 
             # Agent
             agent_utter = self(user_input)
             print()
-            print(AGENT_COLOR + f'AI Assistant: {agent_utter}' + AGENT_COLOR, end='\n\n')
+            print(
+                AGENT_COLOR + f"AI Assistant: {agent_utter}" + AGENT_COLOR, end="\n\n"
+            )
 
             turn_idx += 1
 
 
-if __name__ == '__main__':
-    agent = Agent(model='gpt-3.5-turbo-0301')
+if __name__ == "__main__":
+    agent = Agent(model="gpt-3.5-turbo-0301")
     agent.run()

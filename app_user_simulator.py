@@ -7,7 +7,7 @@ from user import User
 
 app = Flask(__name__)
 
-model_name = "gpt-3.5-turbo"
+model_name = "gpt-4o"
 user_agent = None
 
 BASE_PATH = Path(__file__).resolve().parent
