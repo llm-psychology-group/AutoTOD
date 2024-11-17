@@ -4,7 +4,8 @@ from agent import Agent
 
 app = Flask(__name__)
 
-model_name = "gpt-4"
+model_name = "gpt-3.5-turbo"
+# model_name = "gpt-4"
 chatbot_agent = Agent(model=model_name)
 
 # Note: due to the chatbot agent not being able to handle multiple sessions, the current server will only be able to handle one session at a time.

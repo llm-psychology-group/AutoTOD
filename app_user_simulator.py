@@ -7,7 +7,7 @@ from user import User
 
 app = Flask(__name__)
 
-model_name = "gpt-4o"
+model_name = None
 user_agent = None
 
 BASE_PATH = Path(__file__).resolve().parent
@@ -27,6 +27,7 @@ def init_session():
     dialogue = dialogue_data.get(dialogue_id)
     if not dialogue:
         return jsonify({"error": "Invalid dialogue_id"}), 400
+    model_name = request_data.get("model_name", "gpt-4o")
     global user_agent
     user_agent = User(dialogue, model=model_name)
     return jsonify({"message": "Session initialized", "dialogue_id": dialogue_id})
