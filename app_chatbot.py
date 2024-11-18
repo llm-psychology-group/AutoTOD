@@ -4,15 +4,19 @@ from agent import Agent
 
 app = Flask(__name__)
 
-model_name = "gpt-3.5-turbo"
-# model_name = "gpt-4"
-chatbot_agent = Agent(model=model_name)
+model_name = None
+chatbot_agent = None
 
 # Note: due to the chatbot agent not being able to handle multiple sessions, the current server will only be able to handle one session at a time.
 
 
 @app.route("/init-session", methods=["POST"])
 def init_session():
+    data = request.json
+    model_name = data["model_name"]
+    global chatbot_agent
+    chatbot_agent = Agent(model=model_name)
+    print(f"Session initialized with model: {model_name}")
     chatbot_agent.reset()
     return jsonify({"message": "Session initialized"})
 
