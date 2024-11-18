@@ -73,12 +73,27 @@ class SQLDatabaseChainWithCleanSQL(SQLDatabaseChain):
         return chain_result
 
     def clean_sql(self, sql_cmd):
-        sql_cmd = sql_cmd.replace("SQLQuery:", "")
+        # Find the part after SQLQuery:
+        pattern = r"SQLQuery:(.*)"
+        x = re.search(pattern, sql_cmd)
+        if x:
+            sql_cmd = x.group(1)
+        # Remove code indicators via regex search
+        # Variant 1
         pattern = r"```(.*)\n(.*)\n```"
         x = re.search(pattern, sql_cmd)
         if x:
             sql_cmd = x.group(2)
+        # Variant 2
+        # Remove line breaks
+        sql_cmd = sql_cmd.replace("\n", " ")
+        pattern = r"```sql(.*)```"
+        x = re.search(pattern, sql_cmd)
+        if x:
+            sql_cmd = x.group(1)
+        # Remove leading and trailing whitespaces
         sql_cmd = sql_cmd.strip()
+        # Remove quotes
         if sql_cmd[0] == '"' and sql_cmd[-1] == '"':
             sql_cmd = sql_cmd[1:-1]
         if sql_cmd[0] == "'" and sql_cmd[-1] == "'":
@@ -194,7 +209,7 @@ class Agent:
             agent=agent,
             tools=tools,
             memory=memory,
-            max_iterations=5,
+            max_iterations=10,
             verbose=True,
         )
         return agent_executor
