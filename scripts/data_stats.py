@@ -1,7 +1,6 @@
 import json
-import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import statistics
 
 from lexicalrichness import LexicalRichness
