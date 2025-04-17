@@ -1,0 +1,164 @@
+import json
+import numpy as np
+from pathlib import Path
+from typing import Dict, List, Tuple
+import statistics
+
+from lexicalrichness import LexicalRichness
+from lexical_diversity import lex_div as ld
+
+
+def load_data(file_path: str) -> List[Dict]:
+    """Load the MultiWOZ dataset from JSON file."""
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def collect_statistics(data: dict) -> Dict:
+    """Collect various statistics about the dialogues."""
+    stats = {
+        "num_dialogues": len(data.keys()),
+        "turns_per_dialogue": [],
+        "user_utterances": [],
+        "system_utterances": [],
+        "user_utterance_lengths": [],
+        "system_utterance_lengths": [],
+        "total_utterance_lengths": [],
+        "user_utterance_mtlds": [],
+        "system_utterance_mtlds": [],
+        "user_utterance_terms": [],
+        "system_utterance_terms": [],
+    }
+
+    for dialogue in data.values():
+        turns = dialogue["log"]
+        stats["turns_per_dialogue"].append(len(turns))
+
+        for i, turn in enumerate(turns):
+            utterance = turn["text"]
+            lex = LexicalRichness(utterance)
+
+            n_words = lex.words
+            n_terms = lex.terms
+            mtld = lex.mtld() if lex.words > 0 else 0
+
+            if i % 2 == 0:
+                stats["user_utterances"].append(utterance)
+                stats["user_utterance_lengths"].append(n_words)
+                stats["user_utterance_terms"].append(n_terms)
+                stats["user_utterance_mtlds"].append(mtld)
+            else:  # SYSTEM
+                stats["system_utterances"].append(utterance)
+                stats["system_utterance_lengths"].append(n_words)
+                stats["system_utterance_terms"].append(n_terms)
+                stats["system_utterance_mtlds"].append(mtld)
+
+            stats["total_utterance_lengths"].append(n_words)
+
+    return stats
+
+
+def calculate_metrics(values: List[float]) -> Dict:
+    """Calculate statistical metrics for a list of values."""
+    if not values:
+        return {"min": 0, "q1": 0, "median": 0, "q3": 0, "max": 0, "mean": 0, "std": 0}
+
+    sorted_values = sorted(values)
+    q1 = statistics.quantiles(sorted_values, n=4)[0]
+    q3 = statistics.quantiles(sorted_values, n=4)[2]
+
+    return {
+        "min": min(values),
+        "q1": q1,
+        "median": statistics.median(values),
+        "q3": q3,
+        "max": max(values),
+        "mean": statistics.mean(values),
+        "std": statistics.stdev(values) if len(values) > 1 else 0,
+    }
+
+
+def main():
+    # Load the data
+    data_path = Path("../data/mwoz/origin/data.json")
+    data = load_data(data_path)
+
+    # Compute statistics
+    stats = collect_statistics(data)
+
+    print(f"Example user utterance: {stats['user_utterances'][0]}")
+    print(f"Example system utterance: {stats['system_utterances'][0]}")
+
+    # Calculate and print metrics
+    print("\nMultiWOZ Dataset Statistics")
+    print("=" * 50)
+
+    print(f"\nNumber of dialogues: {stats['num_dialogues']}")
+    print(f"\nNumber of user utterances: {len(stats['user_utterances'])}")
+    print(f"\nNumber of system utterances: {len(stats['system_utterances'])}")
+
+    print("\nTurns per dialogue:")
+    turns_metrics = calculate_metrics(stats["turns_per_dialogue"])
+    for metric, value in turns_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nUser utterance lengths (words):")
+    user_metrics = calculate_metrics(stats["user_utterance_lengths"])
+    for metric, value in user_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nSystem utterance lengths (words):")
+    system_metrics = calculate_metrics(stats["system_utterance_lengths"])
+    for metric, value in system_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nTotal utterance lengths (words):")
+    total_metrics = calculate_metrics(stats["total_utterance_lengths"])
+    for metric, value in total_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nUser utterance unique terms:")
+    user_unique_metrics = calculate_metrics(stats["user_utterance_terms"])
+    for metric, value in user_unique_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nSystem utterance unique terms:")
+    system_unique_metrics = calculate_metrics(stats["system_utterance_terms"])
+    for metric, value in system_unique_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nAverage user utterance MTLD:")
+    user_mtld_metrics = calculate_metrics(stats["user_utterance_mtlds"])
+    for metric, value in user_mtld_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nAverage system utterance MTLD:")
+    system_mtld_metrics = calculate_metrics(stats["system_utterance_mtlds"])
+    for metric, value in system_mtld_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nTotal user utterance MTLD:")
+    all_tokens = []
+    for utterance in stats["user_utterances"]:
+        tokens = ld.tokenize(utterance)
+        all_tokens.extend(tokens)
+    lex_div_mtld = ld.mtld(all_tokens)
+    print(f"Total user utterance MTLD (lex_div): {lex_div_mtld}")
+    combined_user_utterances = " ".join(stats["user_utterances"])
+    lex = LexicalRichness(combined_user_utterances)
+    print(f"Total user utterance MTLD (LexicalRichness): {lex.mtld()}")
+
+    print("\nTotal system utterance MTLD:")
+    all_tokens = []
+    for utterance in stats["system_utterances"]:
+        tokens = ld.tokenize(utterance)
+        all_tokens.extend(tokens)
+    lex_div_mtld = ld.mtld(all_tokens)
+    print(f"Total system utterance MTLD (lex_div): {lex_div_mtld}")
+    combined_system_utterances = " ".join(stats["system_utterances"])
+    lex = LexicalRichness(combined_system_utterances)
+    print(f"Total system utterance MTLD (LexicalRichness): {lex.mtld()}")
+
+
+if __name__ == "__main__":
+    main()
