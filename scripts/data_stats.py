@@ -79,7 +79,7 @@ def calculate_metrics(values: List[float]) -> Dict:
 
 def main():
     # Load the data
-    data_path = Path("../data/mwoz/origin/data.json")
+    data_path = Path("../data/mwoz/mwoz_20_downloaded/data.json")
     data = load_data(data_path)
 
     # Compute statistics
@@ -101,30 +101,60 @@ def main():
     for metric, value in turns_metrics.items():
         print(f"{metric}: {value:.2f}")
 
-    print("\nUser utterance lengths (words):")
+    print("\nTurns per dialogue (without outliers):")
+    # Remove outliers using IQR method
+    q1, q3 = turns_metrics["q1"], turns_metrics["q3"]
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    turns_no_outliers = [
+        t for t in stats["turns_per_dialogue"] if lower_bound <= t <= upper_bound
+    ]
+    turns_no_outliers_metrics = calculate_metrics(turns_no_outliers)
+    for metric, value in turns_no_outliers_metrics.items():
+        print(f"{metric}: {value:.2f}")
+
+    print("\nAverage user utterance lengths (words):")
     user_metrics = calculate_metrics(stats["user_utterance_lengths"])
     for metric, value in user_metrics.items():
         print(f"{metric}: {value:.2f}")
 
-    print("\nSystem utterance lengths (words):")
+    print("\nAverage system utterance lengths (words):")
     system_metrics = calculate_metrics(stats["system_utterance_lengths"])
     for metric, value in system_metrics.items():
         print(f"{metric}: {value:.2f}")
 
-    print("\nTotal utterance lengths (words):")
+    print("\nAverage utterance lengths (words):")
     total_metrics = calculate_metrics(stats["total_utterance_lengths"])
     for metric, value in total_metrics.items():
         print(f"{metric}: {value:.2f}")
 
-    print("\nUser utterance unique terms:")
+    print("\nAverage user utterance unique terms:")
     user_unique_metrics = calculate_metrics(stats["user_utterance_terms"])
     for metric, value in user_unique_metrics.items():
         print(f"{metric}: {value:.2f}")
 
-    print("\nSystem utterance unique terms:")
+    print("\nAverage system utterance unique terms:")
     system_unique_metrics = calculate_metrics(stats["system_utterance_terms"])
     for metric, value in system_unique_metrics.items():
         print(f"{metric}: {value:.2f}")
+
+    all_user_tokens = []
+    for utterance in stats["user_utterances"]:
+        tokens = ld.tokenize(utterance)
+        all_user_tokens.extend(tokens)
+
+    all_system_tokens = []
+    for utterance in stats["system_utterances"]:
+        tokens = ld.tokenize(utterance)
+        all_system_tokens.extend(tokens)
+
+    print("\nUnique user utterance terms:")
+    print(len(set(all_user_tokens)))
+
+    print("\nUnique system utterance terms:")
+    print(len(set(all_system_tokens)))
 
     print("\nAverage user utterance MTLD:")
     user_mtld_metrics = calculate_metrics(stats["user_utterance_mtlds"])
@@ -137,22 +167,14 @@ def main():
         print(f"{metric}: {value:.2f}")
 
     print("\nTotal user utterance MTLD:")
-    all_tokens = []
-    for utterance in stats["user_utterances"]:
-        tokens = ld.tokenize(utterance)
-        all_tokens.extend(tokens)
-    lex_div_mtld = ld.mtld(all_tokens)
+    lex_div_mtld = ld.mtld(all_user_tokens)
     print(f"Total user utterance MTLD (lex_div): {lex_div_mtld}")
     combined_user_utterances = " ".join(stats["user_utterances"])
     lex = LexicalRichness(combined_user_utterances)
     print(f"Total user utterance MTLD (LexicalRichness): {lex.mtld()}")
 
     print("\nTotal system utterance MTLD:")
-    all_tokens = []
-    for utterance in stats["system_utterances"]:
-        tokens = ld.tokenize(utterance)
-        all_tokens.extend(tokens)
-    lex_div_mtld = ld.mtld(all_tokens)
+    lex_div_mtld = ld.mtld(all_system_tokens)
     print(f"Total system utterance MTLD (lex_div): {lex_div_mtld}")
     combined_system_utterances = " ".join(stats["system_utterances"])
     lex = LexicalRichness(combined_system_utterances)
