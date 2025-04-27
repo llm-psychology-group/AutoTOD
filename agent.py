@@ -93,6 +93,8 @@ class SQLDatabaseChainWithCleanSQL(SQLDatabaseChain):
             sql_cmd = x.group(1)
         # Remove leading and trailing whitespaces
         sql_cmd = sql_cmd.strip()
+        if not sql_cmd:
+            return ""
         # Remove quotes
         if sql_cmd[0] == '"' and sql_cmd[-1] == '"':
             sql_cmd = sql_cmd[1:-1]
