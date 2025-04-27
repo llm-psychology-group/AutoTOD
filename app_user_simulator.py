@@ -15,8 +15,6 @@ DATA_PATH = BASE_PATH / "data/mwoz/origin/data.json"
 with open(DATA_PATH) as f:
     dialogue_data = json.load(f)
 
-# Note: due to the chatbot agent not being able to handle multiple sessions, the current server will only be able to handle one session at a time.
-
 
 @app.route("/init-session", methods=["POST"])
 def init_session():
@@ -28,6 +26,7 @@ def init_session():
     if not dialogue:
         return jsonify({"error": "Invalid dialogue_id"}), 400
     model_name = request_data.get("model_name", "gpt-4o")
+    print(f"Initializing session with model: {model_name}")
     global user_agent
     user_agent = User(dialogue, model=model_name)
     return jsonify({"message": "Session initialized", "dialogue_id": dialogue_id})

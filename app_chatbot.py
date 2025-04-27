@@ -7,7 +7,6 @@ app = Flask(__name__)
 model_name = None
 chatbot_agent = None
 
-# Note: due to the chatbot agent not being able to handle multiple sessions, the current server will only be able to handle one session at a time.
 
 
 @app.route("/init-session", methods=["POST"])
